@@ -25,8 +25,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 /**** LED Settings *******/
 const int led = LED_BUILTIN; //Set LED pin as GPIO5
 /****** WiFi Connection Details *******/
-const char* ssid = "PMP";
-const char* password = "pmp@12345";
+const char* ssid = "Airtel_vipu_4970";
+const char* password = "Password@987";
+unsigned int globalCount;
 unsigned int count;
 int sensorPin = D5;
 int i=0; 
@@ -123,11 +124,18 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println("Message arrived ["+String(topic)+"]"+incommingMessage);
 
   //--- check the incomming message
-    if( strcmp(topic,"led_state") == 0){
-     if (incommingMessage.equals("1")) digitalWrite(led, HIGH);   // Turn the LED on
-     else digitalWrite(led, LOW);  // Turn the LED off
-  }
+//    if( strcmp(topic,"led_state") == 0){
+//     if (incommingMessage.equals("1")) digitalWrite(led, HIGH);   // Turn the LED on
+//     else digitalWrite(led, LOW);  // Turn the LED off
+//  }
+  DynamicJsonDocument doc(1024);
+  deserializeJson(doc, incommingMessage);
+  int count = doc["count"];
+  
 
+  // Use the extracted count value in your code
+  Serial.println("Count: " + String(count));
+  globalCount = count;
 }
 void publishMessage(const char* topic, String payload , boolean retained){
   if (client.publish(topic, payload.c_str(), true))
@@ -158,7 +166,9 @@ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
   #endif
 
   client.setServer(mqtt_server, mqtt_port);
+  reconnect();
   client.setCallback(callback);
+  client.subscribe("esp8266_data_SH2");
   lcd.init();                      // initialize the lcd 
   // Print a message to the LCD.
   lcd.backlight();
@@ -166,10 +176,15 @@ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
   lcd.print("SH-02");
 }
 void loop() {
+  
   int sensorValue = digitalRead(sensorPin);
     // Check if a client has connected
   // WiFiClient client = server.available();
-   
+      if (!client.connected()) reconnect(); // check if client is connected
+  
+  client.loop();
+  if(count==0)
+    count = globalCount;
  
     if(sensorValue==HIGH)
  {
@@ -212,10 +227,9 @@ display.println(count);
   lcd.print(count);
     Serial.print("MACHINE 100 count = "); Serial.println(count);
    
- if(i==10)
-{
-   if (!client.connected()) reconnect(); // check if client is connected
-  client.loop();
+// if(i==10)
+//{
+
 
  DynamicJsonDocument doc(1024);
 
@@ -227,9 +241,9 @@ display.println(count);
   serializeJson(doc, mqtt_message);
 
   publishMessage("esp8266_data_SH2", mqtt_message, true);
-  i=0;
-}
-i++;
+//  i=0;
+//}
+//i++;
   delay(50);
 
 }
