@@ -13,6 +13,9 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <LiquidCrystal_I2C.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include<time.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -23,13 +26,17 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 //DHTesp dht;
 
 /**** LED Settings *******/
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
 const int led = LED_BUILTIN; //Set LED pin as GPIO5
 /****** WiFi Connection Details *******/
 const char* ssid = "Airtel_vipu_4970";
 const char* password = "Password@987";
 unsigned int globalCount;
 unsigned int count;
+bool publishMessageToMqtt = false;
 int sensorPin = D5;
+int rsetPin=D6;
 int i=0; 
 LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 /******* MQTT Broker Connection Details *******/
@@ -167,6 +174,8 @@ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
 
   client.setServer(mqtt_server, mqtt_port);
   reconnect();
+  
+  timeClient.begin();
   client.setCallback(callback);
   client.subscribe("esp8266_data_SH2");
   lcd.init();                      // initialize the lcd 
@@ -176,8 +185,20 @@ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
   lcd.print("SH-02");
 }
 void loop() {
+   timeClient.update();
+
+  unsigned long epochTime = timeClient.getEpochTime();
+  String formattedTime = timeClient.getFormattedTime();
+
+  Serial.println("Epoch Time: " + String(epochTime));
+  Serial.println("Formatted Time: " + formattedTime + "\n");
+
+  // Use the real-time information for your tasks here
+
+  //delay(1000);
   
   int sensorValue = digitalRead(sensorPin);
+  int rset=digitalRead(rsetPin);
     // Check if a client has connected
   // WiFiClient client = server.available();
       if (!client.connected()) reconnect(); // check if client is connected
@@ -185,10 +206,17 @@ void loop() {
   client.loop();
   if(count==0)
     count = globalCount;
+
+    if(rset==HIGH)
+    {
+      globalCount=0;
+      count=0;
+    }
  
     if(sensorValue==HIGH)
  {
   count++;
+  publishMessageToMqtt = true;
    Serial.println(count);
   
     display.setCursor(0, 10);
@@ -227,22 +255,26 @@ display.println(count);
   lcd.print(count);
     Serial.print("MACHINE 100 count = "); Serial.println(count);
    
-// if(i==10)
-//{
+ if(count%10==0 && publishMessageToMqtt)
+{
 
 
  DynamicJsonDocument doc(1024);
 
-  doc["deviceId"] = "SH-02";
-  doc["siteId"] = "PMP";
+  doc["deviceId"] = "nodemcu";
+  doc["siteId"] = "SH-1";
   doc["count"] = count;
+  doc["publishedTime"] = epochTime;
+  Serial.print(epochTime);
 
-  char mqtt_message[128];
+  char mqtt_message[400];
   serializeJson(doc, mqtt_message);
 
   publishMessage("esp8266_data_SH2", mqtt_message, true);
+  publishMessageToMqtt=false;
 //  i=0;
-//}
+}
+
 //i++;
   delay(50);
 
