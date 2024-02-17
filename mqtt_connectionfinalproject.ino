@@ -37,7 +37,7 @@ unsigned int count;
 bool publishMessageToMqtt = false;
 int sensorPin = D5;
 String machineSiteId = "BF-02";
-const char* machineTopic = "esp8266_data_SH2";
+const char* machineTopic = "esp8266_data_BF02";
 int rsetPin=D6;
 int i=0; 
 LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -225,8 +225,11 @@ void loop() {
     if(sensorValue==HIGH)
  {
    count++;
-   if(count==1)
-    count=globalCount+count;
+    client.loop();
+  if(count==0 || count==1 || count==NULL)
+    count=globalCount;
+  // if(count==1)
+  //  count=globalCount+count;
   publishMessageToMqtt = true;
    Serial.println(count);
   
@@ -253,8 +256,8 @@ display.println(count);
   display.display(); 
    again:
   while(sensorValue==HIGH) {
-    if(count==1)
-    count=globalCount+count;
+    //if(count==1)
+    //count=globalCount+count;
     sensorValue = digitalRead(sensorPin);
     if(sensorValue==LOW)
         break;
@@ -268,7 +271,7 @@ display.println(count);
   lcd.print(count);
 //    Serial.print("MACHINE 100 count = "); Serial.println(count);
    
- if(count%10==0 && publishMessageToMqtt)
+ if(count!=0 && count%10==0 && publishMessageToMqtt)
 {
 
 
