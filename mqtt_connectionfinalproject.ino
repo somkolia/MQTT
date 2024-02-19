@@ -211,23 +211,24 @@ void loop() {
       if (!client.connected()) reconnect(); // check if client is connected
   
   client.loop();
-  if(count==0)
+  
+  
+if(count==0)
     count=globalCount;
-  
-  
-
-    if(rset==HIGH)
-    {
-      globalCount=0;
-      count=0;
-    }
+    
+   if(rset==HIGH)
+   {
+    count=0;
+    globalCount=0;
+   }
  
     if(sensorValue==HIGH)
  {
+  if(count==1)
+  count=globalCount+1;
    count++;
     client.loop();
-  if(count==0 || count==1 || count==NULL)
-    count=globalCount;
+  
   // if(count==1)
   //  count=globalCount+count;
   publishMessageToMqtt = true;
