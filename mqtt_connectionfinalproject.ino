@@ -36,8 +36,8 @@ unsigned int globalCount;
 unsigned int count;
 bool publishMessageToMqtt = false;
 int sensorPin = D5;
-String machineSiteId = "BF-02";
-const char* machineTopic = "esp8266_data_BF02";
+String machineSiteId = "HDR-01";
+const char* machineTopic = "esp8266_data_HDR-01";
 int rsetPin=D6;
 int i=0; 
 LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -198,6 +198,8 @@ void loop() {
 
   Serial.println("Epoch Time: " + String(epochTime));
   Serial.println("Formatted Time: " + formattedTime + "\n");
+  lcd.setCursor(3,0);
+  lcd.print(machineSiteId);
   
 
   // Use the real-time information for your tasks here
@@ -220,6 +222,10 @@ if(count==0)
    {
     count=0;
     globalCount=0;
+    lcd.clear();
+    
+    //lcd.setCursor(2,3);
+  //lcd.print('00000000000000000');
    }
  
     if(sensorValue==HIGH)
