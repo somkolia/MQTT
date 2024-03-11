@@ -197,7 +197,7 @@ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
   lcd.init();                      // initialize the lcd 
   // Print a message to the LCD.
   lcd.backlight();
-  lcd.setCursor(3,0);
+  lcd.setCursor(0,0);
   lcd.print(machineSiteId);
  
 }
@@ -215,8 +215,12 @@ void loop() {
 
   Serial.println("Epoch Time: " + String(epochTime));
   Serial.println("Formatted Time: " + formattedTime + "\n");
-  lcd.setCursor(3,0);
+  lcd.setCursor(0,0);
   lcd.print(machineSiteId);
+   lcd.setCursor(7,0);
+  lcd.print(formattedTime);
+  ;
+  
   
 
   // Use the real-time information for your tasks here
@@ -235,22 +239,7 @@ void loop() {
 if(count==0)
     count=globalCount;
     
- // if (millis() - lastResetTime >= resetInterval) {
-    // Reset the counter to zero
-   // count = 0;
-    //globalCount=0;
-    //lcd.clear();
-    // Update the last reset time
-    //lastResetTime = millis();
- // }
-// if (currentDay != lastResetDay) {
-//    count = 0; // Reset the counter to zero
-//    globalCount=0;
-//    lcd.clear();
-//    lastResetDay = currentDay; // Update the last reset day
-//    //Serial.println("Counter reset to zero.");
-// }
- // Check if it's time to reset the counter for the first shift
+ 
   if (currentHour == resetHour1 && currentHour != lastResetHour1) {
     count = 0;
     globalCount=0;// Reset the counter to zero
@@ -280,27 +269,27 @@ if(count==0)
   publishMessageToMqtt = true;
    Serial.println(count);
   
-    display.setCursor(0, 10);
-   display.clearDisplay();
-    display.setTextSize(2);
-   display.println("machine100");
-    display.setTextSize(2);
-   display.setCursor(5,40);
-   
-display.println(count);
-  display.display();  
+//    display.setCursor(0, 10);
+//   display.clearDisplay();
+//    display.setTextSize(2);
+//   display.println("machine100");
+//    display.setTextSize(2);
+//   display.setCursor(5,40);
+//   
+//display.println(count);
+//  display.display();  
 // 
 //    Serial.print("MACHINE 100 = "); Serial.println(count);
-    display.display(); 
-   display.setCursor(0, 10);
-   display.clearDisplay();
-    display.setTextSize(2);
-   display.println("machine100");
-    display.setTextSize(2);
-   display.setCursor(5,40);
-   
-    display.println(count);
-  display.display(); 
+//    display.display(); 
+//   display.setCursor(0, 10);
+//   display.clearDisplay();
+//    display.setTextSize(2);
+//   display.println("machine100");
+//    display.setTextSize(2);
+//   display.setCursor(5,40);
+//   
+//    display.println(count);
+//  display.display(); 
    again:
   while(sensorValue==HIGH) {
     //if(count==1)
@@ -347,7 +336,7 @@ display.println(count);
   }
 
  
- lcd.setCursor(2,3);
+ lcd.setCursor(0,3);
  lcd.print(count);
 //    Serial.print("MACHINE 100 count = "); Serial.println(count);
    
