@@ -28,7 +28,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 /**** LED Settings *******/
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-const int led = LED_BUILTIN; //Set LED pin as GPIO5
+const int led = LED_BUILTIN;
+const long utcOffsetInSeconds = 19800; // UTC offset for Indian Standard Time (IST) in seconds (5 hours + 30 minutes)
+//Set LED pin as GPIO5
 /****** WiFi Connection Details *******/
 const char* ssid = "PMP";
 const char* password = "pmp@12345";
@@ -36,10 +38,19 @@ unsigned int globalCount;
 unsigned int count;
 bool publishMessageToMqtt = false;
 int sensorPin = D5;
-String machineSiteId = "HDR-01";
-const char* machineTopic = "esp8266_data_HDR-01";
+String machineSiteId = "SH-03";
+//int lastResetDay = 0;
+//unsigned long lastResetTime = 0; // Store the last time the counter was reset
+//unsigned long resetInterval = 6 * 1000; // Reset interval: 24 hours in milliseconds
+const char* machineTopic = "esp8266_data_SH-03";
 int rsetPin=D6;
 int i=0; 
+int lastResetHour1 = -1; // Store the last reset hour for the first shift
+int lastResetHour2 = -1; // Store the last reset hour for the second shift
+
+// Define the hours at which you want to reset the counter (in 24-hour format)
+const int resetHour1 = 8;  // Reset at 8:00 AM
+const int resetHour2 = 20; // Reset at 8:00 PM
 LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 /******* MQTT Broker Connection Details *******/
 const char* mqtt_server = " d08900cfdef5463098201f44a1532917.s2.eu.hivemq.cloud";
@@ -180,6 +191,7 @@ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
   reconnect();
   
   timeClient.begin();
+  timeClient.setTimeOffset(utcOffsetInSeconds);
   client.setCallback(callback);
   client.subscribe(machineTopic);
   lcd.init();                      // initialize the lcd 
@@ -191,6 +203,11 @@ if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
 }
 void loop() {
    timeClient.update();
+  
+ // Get current day
+  int currentDay = timeClient.getDay();
+  // Get current hour
+  int currentHour = timeClient.getHours();
 
   unsigned long epochTime = timeClient.getEpochTime();
   String formattedTime = timeClient.getFormattedTime();
@@ -218,15 +235,38 @@ void loop() {
 if(count==0)
     count=globalCount;
     
-   if(rset==HIGH)
-   {
-    count=0;
-    globalCount=0;
+ // if (millis() - lastResetTime >= resetInterval) {
+    // Reset the counter to zero
+   // count = 0;
+    //globalCount=0;
+    //lcd.clear();
+    // Update the last reset time
+    //lastResetTime = millis();
+ // }
+// if (currentDay != lastResetDay) {
+//    count = 0; // Reset the counter to zero
+//    globalCount=0;
+//    lcd.clear();
+//    lastResetDay = currentDay; // Update the last reset day
+//    //Serial.println("Counter reset to zero.");
+// }
+ // Check if it's time to reset the counter for the first shift
+  if (currentHour == resetHour1 && currentHour != lastResetHour1) {
+    count = 0;
+    globalCount=0;// Reset the counter to zero
     lcd.clear();
-    
-    //lcd.setCursor(2,3);
-  //lcd.print('00000000000000000');
-   }
+    lastResetHour1 = currentHour; // Update the last reset hour for the first shift
+    Serial.println("Counter reset to zero for the first shift.");
+  }
+
+  // Check if it's time to reset the counter for the second shift
+  if (currentHour == resetHour2 && currentHour != lastResetHour2) {
+    count = 0;
+    globalCount=0;// Reset the counter to zero
+    lcd.clear();
+    lastResetHour2 = currentHour; // Update the last reset hour for the second shift
+    Serial.println("Counter reset to zero for the second shift.");
+  }
  
     if(sensorValue==HIGH)
  {
@@ -269,13 +309,46 @@ display.println(count);
     if(sensorValue==LOW)
         break;
     else
-    {  delay(5);
+    {
+    if (currentHour == resetHour1 && currentHour != lastResetHour1) {
+    count = 0;
+    globalCount=0;// Reset the counter to zero
+    lcd.clear();
+    lastResetHour1 = currentHour; // Update the last reset hour for the first shift
+    Serial.println("Counter reset to zero for the first shift.");
+  }
+
+  // Check if it's time to reset the counter for the second shift
+  if (currentHour == resetHour2 && currentHour != lastResetHour2) {
+    count = 0;
+    globalCount=0;// Reset the counter to zero
+    lcd.clear();
+    lastResetHour2 = currentHour; // Update the last reset hour for the second shift
+    Serial.println("Counter reset to zero for the second shift.");
+  }
+//    {if (currentDay != lastResetDay) {
+//    count = 0; // Reset the counter to zero
+//    globalCount=0;
+//    lcd.clear();
+//    lastResetDay = currentDay; // Update the last reset day
+//    //Serial.println("Counter reset to zero.");
+// }  
+     // if (millis() - lastResetTime >= resetInterval) {
+    // Reset the counter to zero
+    //count = 0;
+   // globalCount=0;
+    //lcd.clear();
+    // Update the last reset time
+    //lastResetTime = millis();
+  }delay(5);
+    
       goto again;
     }
   }
- }
+
+ 
  lcd.setCursor(2,3);
-  lcd.print(count);
+ lcd.print(count);
 //    Serial.print("MACHINE 100 count = "); Serial.println(count);
    
  if(count!=0 && count%10==0 && publishMessageToMqtt)
@@ -287,7 +360,7 @@ display.println(count);
   doc["deviceId"] = "nodemcu";
   doc["siteId"] = machineSiteId;
   doc["count"] = count;
-  doc["publishedTime"] = epochTime;
+  doc["publishedTime"] = formattedTime;
   Serial.print(epochTime);
 
   char mqtt_message[400];
