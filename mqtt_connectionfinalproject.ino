@@ -38,19 +38,19 @@ unsigned int globalCount;
 unsigned int count;
 bool publishMessageToMqtt = false;
 int sensorPin = D5;
-String machineSiteId = "SH-03";
-//int lastResetDay = 0;
-//unsigned long lastResetTime = 0; // Store the last time the counter was reset
-//unsigned long resetInterval = 6 * 1000; // Reset interval: 24 hours in milliseconds
-const char* machineTopic = "esp8266_data_SH-03";
+String machineSiteId = "HDR-02";
+const char* machineTopic = "PMP_data_HDR-02";
 int rsetPin=D6;
+const unsigned long interval = 60000;  // 1 minute in milliseconds
+unsigned long lastMinuteMillis = 0; // Time of the last minute
+int count1=0;
 int i=0; 
 int lastResetHour1 = -1; // Store the last reset hour for the first shift
 int lastResetHour2 = -1; // Store the last reset hour for the second shift
 
 // Define the hours at which you want to reset the counter (in 24-hour format)
-const int resetHour1 = 8;  // Reset at 8:00 AM
-const int resetHour2 = 20; // Reset at 8:00 PM
+const int resetHour1 = 9;  // Reset at 9:00 AM
+const int resetHour2 = 10.40; // Reset at 8:00 PM
 LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 /******* MQTT Broker Connection Details *******/
 const char* mqtt_server = " d08900cfdef5463098201f44a1532917.s2.eu.hivemq.cloud";
@@ -164,18 +164,7 @@ void publishMessage(const char* topic, String payload , boolean retained){
       Serial.println("Message publised ["+String(topic)+"]: "+payload);
 }
 void setup() {
-if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;);
-    
-  }
-   
-  delay(55);
-  display.clearDisplay();
 
- // display.setTextSize(2);
-  display.setTextColor(WHITE);
- // dht.setup(DHTpin, DHTesp::DHT11); //Set up DHT11 sensor
   pinMode(led, OUTPUT); //set up LED
   Serial.begin(115200);
   while (!Serial) delay(1);
@@ -215,6 +204,7 @@ void loop() {
 
   Serial.println("Epoch Time: " + String(epochTime));
   Serial.println("Formatted Time: " + formattedTime + "\n");
+   
   lcd.setCursor(0,0);
   lcd.print(machineSiteId);
    lcd.setCursor(7,0);
@@ -262,34 +252,28 @@ if(count==0)
   if(count==1)
   count=globalCount+1;
    count++;
+   count1++;
     client.loop();
-  
+     // Check if a minute has passed
+  if (millis() - lastMinuteMillis >= interval) {
+    // Calculate events per minute
+    float eventsPerMinute = count1 / ((millis() - lastMinuteMillis) / 60000.0);
+    lcd.setCursor(12,3);
+    lcd.print("F");
+    lcd.setCursor(13,3);
+    lcd.print(count1);
+    
+    // Reset event count and update last minute time
+    count1 = 0;
+    lastMinuteMillis = millis();
+
+  }
   // if(count==1)
   //  count=globalCount+count;
   publishMessageToMqtt = true;
    Serial.println(count);
   
-//    display.setCursor(0, 10);
-//   display.clearDisplay();
-//    display.setTextSize(2);
-//   display.println("machine100");
-//    display.setTextSize(2);
-//   display.setCursor(5,40);
-//   
-//display.println(count);
-//  display.display();  
-// 
-//    Serial.print("MACHINE 100 = "); Serial.println(count);
-//    display.display(); 
-//   display.setCursor(0, 10);
-//   display.clearDisplay();
-//    display.setTextSize(2);
-//   display.println("machine100");
-//    display.setTextSize(2);
-//   display.setCursor(5,40);
-//   
-//    display.println(count);
-//  display.display(); 
+
    again:
   while(sensorValue==HIGH) {
     //if(count==1)
@@ -315,20 +299,7 @@ if(count==0)
     lastResetHour2 = currentHour; // Update the last reset hour for the second shift
     Serial.println("Counter reset to zero for the second shift.");
   }
-//    {if (currentDay != lastResetDay) {
-//    count = 0; // Reset the counter to zero
-//    globalCount=0;
-//    lcd.clear();
-//    lastResetDay = currentDay; // Update the last reset day
-//    //Serial.println("Counter reset to zero.");
-// }  
-     // if (millis() - lastResetTime >= resetInterval) {
-    // Reset the counter to zero
-    //count = 0;
-   // globalCount=0;
-    //lcd.clear();
-    // Update the last reset time
-    //lastResetTime = millis();
+
   }delay(5);
     
       goto again;
@@ -349,7 +320,7 @@ if(count==0)
   doc["deviceId"] = "nodemcu";
   doc["siteId"] = machineSiteId;
   doc["count"] = count;
-  doc["publishedTime"] = formattedTime;
+  doc["publishedTime"] = epochTime;
   Serial.print(epochTime);
 
   char mqtt_message[400];
